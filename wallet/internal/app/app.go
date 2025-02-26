@@ -2,8 +2,8 @@ package app
 
 import (
 	"net/http"
-	logger "wallets/internal/logger/slog"
-	"wallets/internal/wallet/config"
+	"wallet/internal/config"
+	logger "wallet/internal/logger/slog"
 
 	"github.com/go-chi/chi"
 )

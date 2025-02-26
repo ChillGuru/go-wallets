@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"wallets/internal/wallet/app"
+	"wallet/internal/app"
 )
 
 func main() {

@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug wallets",
+            "name": "Debug wallet",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/wallet"
+            "program": "${workspaceFolder}/cmd"
         }
     ]
 }
