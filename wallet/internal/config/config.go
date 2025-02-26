@@ -35,12 +35,12 @@ func MustLoad() *Config {
 		log.Fatal("Can't load config (CONFIG_PATH is not set)")
 	}
 
-	//Check config file existing
+	//check config file existing
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("Config file is not exist. Path: %s", configPath)
 	}
 
-	//Read config
+	//read config
 	var config Config
 	if err = cleanenv.ReadConfig(configPath, &config); err != nil {
 		log.Fatalf("Can't read config: %s", err)

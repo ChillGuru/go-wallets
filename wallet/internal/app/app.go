@@ -1,9 +1,12 @@
 package app
 
 import (
+	"log/slog"
 	"net/http"
+	"os"
 	"wallet/internal/config"
 	logger "wallet/internal/logger/slog"
+	"wallet/internal/storage/sqlite"
 
 	"github.com/go-chi/chi"
 )
@@ -20,6 +23,14 @@ func Run() error {
 
 	router := chi.NewRouter()
 
+	storage, err := sqlite.New(config.StoragePath)
+	if err != nil {
+		log.Error("Can't init storage: ", logger.Err(err))
+		os.Exit(1)
+	}
+
+	_ = storage
+
 	srv := &http.Server{
 		Addr:         config.Address,
 		Handler:      router,
@@ -27,6 +38,8 @@ func Run() error {
 		WriteTimeout: config.Timeout,
 		IdleTimeout:  config.IdleTimeout,
 	}
+
+	log.Info("Staring server", slog.String("adress: ", config.Address))
 
 	if err := srv.ListenAndServe(); err != nil {
 		log.Error("Can't run server: ", logger.Err(err))
