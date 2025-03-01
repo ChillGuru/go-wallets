@@ -1,11 +1,13 @@
 package app
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"wallet/internal/config"
 	logger "wallet/internal/logger/slog"
+	chirouter "wallet/internal/router/chi"
 	"wallet/internal/storage/sqlite"
 
 	"github.com/go-chi/chi"
@@ -22,6 +24,7 @@ func Run() error {
 	log.Info("Logger inited!")
 
 	router := chi.NewRouter()
+	chirouter.InitWallet(router)
 
 	storage, err := sqlite.New(config.StoragePath)
 	if err != nil {
@@ -29,7 +32,12 @@ func Run() error {
 		os.Exit(1)
 	}
 
-	_ = storage
+	wallets, err := storage.GetWallets()
+	if err != nil {
+		log.Error("Can't get wallets: ", logger.Err(err))
+	}
+
+	fmt.Printf("%+v\n", wallets)
 
 	srv := &http.Server{
 		Addr:         config.Address,
