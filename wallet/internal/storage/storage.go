@@ -11,7 +11,7 @@ type Storage interface {
 	GetWallets(ctx context.Context) ([]Wallet, error)
 	UpdateWallet(ctx context.Context, updatedWallet *Wallet) (int64, error)
 	//Транзакции
-	BeginTX(ctx context.Context) (Transaction, error)
+	BeginTx(ctx context.Context) (Transaction, error)
 }
 
 type Transaction interface {

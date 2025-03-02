@@ -9,6 +9,7 @@ import (
 	"wallet/internal/config"
 	logger "wallet/internal/logger/slog"
 	chirouter "wallet/internal/router/chi"
+	"wallet/internal/service"
 	"wallet/internal/storage/sqlite"
 
 	"github.com/go-chi/chi"
@@ -32,6 +33,20 @@ func Run() error {
 		log.Error("Can't init storage: ", logger.Err(err))
 		os.Exit(1)
 	}
+
+	walletService := service.New(storage)
+
+	id, err := walletService.Deposit(context.TODO(), "IVo6b4fbfKiKW55Z", 100)
+	if err != nil {
+		log.Error("Can't deposit: ", logger.Err(err))
+	}
+
+	id, err = walletService.Withdraw(context.TODO(), "IVo6b4fbfKiKW55Z", 30)
+	if err != nil {
+		log.Error("Can't deposit: ", logger.Err(err))
+	}
+
+	_ = id
 
 	wallets, err := storage.GetWallets(context.TODO())
 	if err != nil {
