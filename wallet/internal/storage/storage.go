@@ -6,12 +6,19 @@ import (
 )
 
 type Storage interface {
-	CreateWallet(ctx context.Context, name string)
-	GetWallet(ctx context.Context, walletID string)
-	GetWallets(ctx context.Context)
-	UpdateWallet(ctx context.Context)
-
+	CreateWallet(ctx context.Context, name string) (int64, error)
+	GetWallet(ctx context.Context, walletID string) (*Wallet, error)
+	GetWallets(ctx context.Context) ([]Wallet, error)
+	UpdateWallet(ctx context.Context, updatedWallet *Wallet) (int64, error)
+	//Транзакции
 	BeginTX(ctx context.Context) (Transaction, error)
+}
+
+type Transaction interface {
+	Commit() error
+	Rollback() error
+	GetWallet(ctx context.Context, walletID string) (*Wallet, error)
+	UpdateWallet(ctx context.Context, updatedWallet *Wallet) (int64, error)
 }
 
 type Wallet struct {
@@ -19,11 +26,6 @@ type Wallet struct {
 	Name    string
 	Balance float64
 	Status  string
-}
-
-type Transaction interface {
-	Commit() error
-	Rollback() error
 }
 
 // TODO: add more errors
