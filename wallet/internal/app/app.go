@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -32,7 +33,7 @@ func Run() error {
 		os.Exit(1)
 	}
 
-	wallets, err := storage.GetWallets()
+	wallets, err := storage.GetWallets(context.TODO())
 	if err != nil {
 		log.Error("Can't get wallets: ", logger.Err(err))
 	}
