@@ -77,3 +77,48 @@ func (w *WalletService) Withdraw(ctx context.Context, walletID string, amount fl
 
 	return id, nil
 }
+
+func (w *WalletService) Transfer(ctx context.Context, walletID string, amount float64, transferTo string) (int64, int64, error) {
+	const fn = "WalletService.Transfer"
+	if amount <= 0 {
+		return 0, 0, fmt.Errorf("%s: Amount must be positive", fn)
+	}
+
+	tx, err := w.storage.BeginTx(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	fromWallet, err := tx.GetWallet(ctx, walletID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	toWallet, err := tx.GetWallet(ctx, transferTo)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	if fromWallet.Balance < amount {
+		return 0, 0, fmt.Errorf("%s: Insufficient funds", fn)
+	}
+
+	fromWallet.Balance -= amount
+	toWallet.Balance += amount
+
+	id, err := tx.UpdateWallet(ctx, fromWallet)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	recipientID, err := tx.UpdateWallet(ctx, toWallet)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return id, recipientID, nil
+}

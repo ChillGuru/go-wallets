@@ -212,8 +212,6 @@ func (t *SQLiteTx) UpdateWallet(ctx context.Context, updatedWallet *storage.Wall
 
 	defer stmt.Close()
 
-	fmt.Printf("%+v\n", updatedWallet)
-
 	res, err := stmt.ExecContext(ctx, updatedWallet.Name, updatedWallet.Balance, updatedWallet.Status, updatedWallet.ID)
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to update wallet: %w", fn, err)

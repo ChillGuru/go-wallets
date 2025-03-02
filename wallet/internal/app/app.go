@@ -36,17 +36,10 @@ func Run() error {
 
 	walletService := service.New(storage)
 
-	id, err := walletService.Deposit(context.TODO(), "IVo6b4fbfKiKW55Z", 100)
+	_, _, err = walletService.Transfer(context.TODO(), "IVo6b4fbfKiKW55Z", 200, "jMcDY1DM68GdYp0R")
 	if err != nil {
 		log.Error("Can't deposit: ", logger.Err(err))
 	}
-
-	id, err = walletService.Withdraw(context.TODO(), "IVo6b4fbfKiKW55Z", 30)
-	if err != nil {
-		log.Error("Can't deposit: ", logger.Err(err))
-	}
-
-	_ = id
 
 	wallets, err := storage.GetWallets(context.TODO())
 	if err != nil {
