@@ -159,6 +159,29 @@ func (s *Storage) UpdateWallet(ctx context.Context, updatedWallet *storage.Walle
 	return id, nil
 }
 
+func (s *Storage) DeactivateWallet(ctx context.Context, walletID string) (int64, error) {
+	const fn = "sqlite.DeactivateWallet"
+
+	stmt, err := s.db.Prepare(`UPDATE wallet SET status = "inactive" WHERE id = ?`)
+	if err != nil {
+		return 0, fmt.Errorf("%s failed to prepare query for deactivate wallet: %w", fn, err)
+	}
+
+	defer stmt.Close()
+
+	res, err := stmt.ExecContext(ctx, walletID)
+	if err != nil {
+		return 0, fmt.Errorf("%s failed to deactivate wallet: %w", fn, err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s failed to get last insert id: %w", fn, err)
+	}
+
+	return id, nil
+}
+
 func (s *Storage) BeginTx(ctx context.Context) (storage.Transaction, error) {
 	const fn = "sqlite.BeginTx"
 

@@ -35,10 +35,11 @@ func Run() error {
 	}
 
 	walletService := service.New(storage)
+	_ = walletService
 
-	_, _, err = walletService.Transfer(context.TODO(), "IVo6b4fbfKiKW55Z", 200, "jMcDY1DM68GdYp0R")
+	_, err = storage.DeactivateWallet(context.TODO(), "IVo6b4fbfKiKW55Z")
 	if err != nil {
-		log.Error("Can't deposit: ", logger.Err(err))
+		log.Error("Can't deactivate wallet: ", logger.Err(err))
 	}
 
 	wallets, err := storage.GetWallets(context.TODO())

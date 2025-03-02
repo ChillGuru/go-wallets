@@ -122,3 +122,33 @@ func (w *WalletService) Transfer(ctx context.Context, walletID string, amount fl
 
 	return id, recipientID, nil
 }
+
+func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (int64, error) {
+	const fn = "WalletService.UpdateName"
+	if len(name) <= 1 {
+		return 0, fmt.Errorf("%s: The name length must be more than 1 character", fn)
+	}
+
+	tx, err := w.storage.BeginTx(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	wallet, err := tx.GetWallet(ctx, walletID)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	wallet.Name = name
+
+	id, err := tx.UpdateWallet(ctx, wallet)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return id, nil
+}
