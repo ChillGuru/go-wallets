@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"wallet/internal/lib/random"
 	"wallet/internal/storage"
+	"wallet/internal/utils/random"
 
 	"github.com/mattn/go-sqlite3"
 )
@@ -58,31 +58,26 @@ func New(path string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) CreateWallet(ctx context.Context, name string) (int64, error) {
+func (s *Storage) CreateWallet(ctx context.Context, name string) (string, error) {
 	const fn = "sqlite.CreateWallet"
 
 	stmt, err := s.db.Prepare(`INSERT INTO wallet(id, name) VALUES(?, ?)`)
 	if err != nil {
-		return 0, fmt.Errorf("%s failed to prepare query for creating wallet: %w", fn, err)
+		return "", fmt.Errorf("%s failed to prepare query for creating wallet: %w", fn, err)
 	}
 
 	defer stmt.Close()
 
 	walletID := random.NewRandomString(ID_LENGTH)
 
-	res, err := stmt.ExecContext(ctx, walletID, name)
+	_, err = stmt.ExecContext(ctx, walletID, name)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			return 0, fmt.Errorf("%s: %w", fn, storage.ErrWalletExists)
+			return "", fmt.Errorf("%s: %w", fn, storage.ErrWalletExists)
 		}
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("%s failed to get last insert id: %w", fn, err)
-	}
-
-	return id, nil
+	return walletID, nil
 }
 
 func (s *Storage) GetWallet(ctx context.Context, walletID string) (*storage.Wallet, error) {
@@ -116,6 +111,9 @@ func (s *Storage) GetWallets(ctx context.Context) ([]storage.Wallet, error) {
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
 
 	var wallets []storage.Wallet
 

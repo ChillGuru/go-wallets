@@ -6,7 +6,7 @@ import (
 )
 
 type Storage interface {
-	CreateWallet(ctx context.Context, name string) (int64, error)
+	CreateWallet(ctx context.Context, name string) (string, error)
 	GetWallet(ctx context.Context, walletID string) (*Wallet, error)
 	GetWallets(ctx context.Context) ([]Wallet, error)
 	UpdateWallet(ctx context.Context, updatedWallet *Wallet) (int64, error)

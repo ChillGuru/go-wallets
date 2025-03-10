@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"wallet/internal/storage"
 )
@@ -151,4 +152,21 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 	}
 
 	return id, nil
+}
+
+func (w *WalletService) CreateWallet(ctx context.Context, name string) (*storage.Wallet, error) {
+	const fn = "WalletService.CreateWallet"
+	if len(name) <= 1 {
+		return nil, fmt.Errorf("%s: The name length must be more than 1 character", fn)
+	}
+
+	walletID, err := w.storage.CreateWallet(ctx, name)
+	if errors.Is(err, storage.ErrWalletExists) {
+		return nil, err
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return &storage.Wallet{ID: walletID, Name: name, Status: "active"}, nil
 }

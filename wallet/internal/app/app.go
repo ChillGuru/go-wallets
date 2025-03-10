@@ -25,9 +25,6 @@ func Run() error {
 	log := logger.Init(config.Env)
 	log.Info("Logger inited!")
 
-	router := chi.NewRouter()
-	chirouter.InitWallet(router)
-
 	storage, err := sqlite.New(config.StoragePath)
 	if err != nil {
 		log.Error("Can't init storage: ", logger.Err(err))
@@ -35,12 +32,9 @@ func Run() error {
 	}
 
 	walletService := service.New(storage)
-	_ = walletService
 
-	_, err = storage.DeactivateWallet(context.TODO(), "IVo6b4fbfKiKW55Z")
-	if err != nil {
-		log.Error("Can't deactivate wallet: ", logger.Err(err))
-	}
+	router := chi.NewRouter()
+	chirouter.InitWallet(router, walletService)
 
 	wallets, err := storage.GetWallets(context.TODO())
 	if err != nil {
