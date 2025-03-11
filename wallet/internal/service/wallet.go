@@ -143,6 +143,9 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 	wallet.Name = name
 
 	id, err := tx.UpdateWallet(ctx, wallet)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return 0, err
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
 	}
@@ -185,4 +188,15 @@ func (w *WalletService) GetWallet(ctx context.Context, walletID string) (*storag
 	}
 
 	return wallet, nil
+}
+
+func (w *WalletService) GetWallets(ctx context.Context) ([]storage.Wallet, error) {
+	const fn = "WalletService.GetWallets"
+
+	wallets, err := w.storage.GetWallets(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return wallets, nil
 }

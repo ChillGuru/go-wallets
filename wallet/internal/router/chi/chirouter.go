@@ -15,8 +15,8 @@ func InitWallet(r *chi.Mux, s *service.WalletService) {
 
 	r.Post("/wallet", handlers.CreateWalletHandler(s))
 	r.Get("/wallets/{id}", handlers.GetWalletHandler(s))
-	//r.Get("/wallets", )
-	//r.Put("/wallets{id}", )
+	r.Get("/wallets", handlers.GetWalletsHandler(s))
+	r.Put("/wallets/{id}", handlers.PutWalletsNameHandler(s))
 	//r.Delete("wallet/{id}", )
 	//r.Post("/wallets/{id}/deposit", )
 	//r.Post("/wallets/{id}/withdraw", )

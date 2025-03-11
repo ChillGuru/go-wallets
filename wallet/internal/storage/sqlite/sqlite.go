@@ -145,6 +145,9 @@ func (s *Storage) UpdateWallet(ctx context.Context, updatedWallet *storage.Walle
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, updatedWallet.Name, updatedWallet.Balance, updatedWallet.Status, updatedWallet.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to update wallet: %w", fn, err)
 	}
@@ -234,6 +237,9 @@ func (t *SQLiteTx) UpdateWallet(ctx context.Context, updatedWallet *storage.Wall
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, updatedWallet.Name, updatedWallet.Balance, updatedWallet.Status, updatedWallet.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to update wallet: %w", fn, err)
 	}

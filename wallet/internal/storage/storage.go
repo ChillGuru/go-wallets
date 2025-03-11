@@ -22,10 +22,10 @@ type Transaction interface {
 }
 
 type Wallet struct {
-	ID      string
-	Name    string
-	Balance float64
-	Status  string
+	ID      string  `json:"id"`
+	Name    string  `json:"name,omitempty"`
+	Balance float64 `json:"balance,omitempty"`
+	Status  string  `json:"status,omitempty"`
 }
 
 // TODO: add more errors
