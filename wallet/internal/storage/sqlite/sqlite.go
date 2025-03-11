@@ -171,6 +171,9 @@ func (s *Storage) DeactivateWallet(ctx context.Context, walletID string) (int64,
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, walletID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to deactivate wallet: %w", fn, err)
 	}

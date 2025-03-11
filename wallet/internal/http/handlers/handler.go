@@ -8,7 +8,7 @@ import (
 )
 
 type Response struct {
-	ID      string  `json:"id"`
+	ID      string  `json:"id,omitempty"`
 	Name    string  `json:"name,omitempty"`
 	Balance float64 `json:"balance,omitempty"`
 	Status  string  `json:"status,omitempty"`

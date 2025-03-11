@@ -133,3 +133,26 @@ func PutWalletsNameHandler(renamer WalletRenamer) http.HandlerFunc {
 		render.JSON(w, r, Response{ID: walletID, Success: true})
 	}
 }
+
+type WalletRemover interface {
+	DeactivateWallet(ctx context.Context, walletID string) (int64, error)
+}
+
+func RemoveWalletHandler(remover WalletRemover) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		walletID := chi.URLParam(r, "id")
+		if walletID == "" {
+			render.JSON(w, r, Error("Invalid request"))
+			return
+		}
+
+		_, err := remover.DeactivateWallet(r.Context(), walletID)
+		if err != nil {
+			render.JSON(w, r, Response{ID: walletID, Success: false, ErrCode: err.Error()})
+			return
+		}
+
+		render.JSON(w, r, Response{ID: walletID, Success: true})
+	}
+}

@@ -10,6 +10,7 @@ type Storage interface {
 	GetWallet(ctx context.Context, walletID string) (*Wallet, error)
 	GetWallets(ctx context.Context) ([]Wallet, error)
 	UpdateWallet(ctx context.Context, updatedWallet *Wallet) (int64, error)
+	DeactivateWallet(ctx context.Context, walletID string) (int64, error)
 	//Транзакции
 	BeginTx(ctx context.Context) (Transaction, error)
 }

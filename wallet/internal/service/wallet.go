@@ -200,3 +200,17 @@ func (w *WalletService) GetWallets(ctx context.Context) ([]storage.Wallet, error
 
 	return wallets, nil
 }
+
+func (w *WalletService) DeactivateWallet(ctx context.Context, walletID string) (int64, error) {
+	const fn = "WalletService.GetWallets"
+
+	id, err := w.storage.DeactivateWallet(ctx, walletID)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return 0, err
+	}
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return id, nil
+}
