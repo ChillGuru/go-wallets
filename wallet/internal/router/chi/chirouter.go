@@ -14,7 +14,7 @@ func InitWallet(r *chi.Mux, s *service.WalletService) {
 	r.Use(middleware.Recoverer) //отлов паник
 
 	r.Post("/wallet", handlers.CreateWalletHandler(s))
-	//r.Get("/wallets{id}", )
+	r.Get("/wallets/{id}", handlers.GetWalletHandler(s))
 	//r.Get("/wallets", )
 	//r.Put("/wallets{id}", )
 	//r.Delete("wallet/{id}", )

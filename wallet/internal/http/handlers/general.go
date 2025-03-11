@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"wallet/internal/storage"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator"
 )
@@ -16,7 +17,7 @@ type WalletCreator interface {
 
 func CreateWalletHandler(creator WalletCreator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const fn = "handlers.CreateWallet"
+		const fn = "handlers.CreateWalletHandler"
 
 		var req Request
 
@@ -50,6 +51,38 @@ func CreateWalletHandler(creator WalletCreator) http.HandlerFunc {
 			ID:     createdWallet.ID,
 			Name:   createdWallet.Name,
 			Status: createdWallet.Status,
+		})
+	}
+}
+
+type WalletRecipient interface {
+	GetWallet(ctx context.Context, walletID string) (*storage.Wallet, error)
+}
+
+func GetWalletHandler(recipient WalletRecipient) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		walletID := chi.URLParam(r, "id")
+		if walletID == "" {
+			render.JSON(w, r, Error("Invalid request"))
+			return
+		}
+
+		wallet, err := recipient.GetWallet(r.Context(), walletID)
+		if errors.Is(err, storage.ErrWalletNotExist) {
+			render.JSON(w, r, Error("Wallet not exists"))
+			return
+		}
+		if err != nil {
+			render.JSON(w, r, Error("Can't get wallet"))
+			return
+		}
+
+		render.JSON(w, r, Response{
+			ID:      wallet.ID,
+			Name:    wallet.Name,
+			Balance: wallet.Balance,
+			Status:  wallet.Status,
 		})
 	}
 }

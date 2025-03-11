@@ -170,3 +170,19 @@ func (w *WalletService) CreateWallet(ctx context.Context, name string) (*storage
 
 	return &storage.Wallet{ID: walletID, Name: name, Status: "active"}, nil
 }
+
+func (w *WalletService) GetWallet(ctx context.Context, walletID string) (*storage.Wallet, error) {
+	const fn = "WalletService.GetWallet"
+
+	var wallet *storage.Wallet
+
+	wallet, err := w.storage.GetWallet(ctx, walletID)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return nil, err
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return wallet, nil
+}
