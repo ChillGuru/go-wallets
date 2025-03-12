@@ -1,8 +1,6 @@
 package app
 
 import (
-	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -35,13 +33,6 @@ func Run() error {
 
 	router := chi.NewRouter()
 	chirouter.InitWallet(router, walletService)
-
-	wallets, err := storage.GetWallets(context.TODO())
-	if err != nil {
-		log.Error("Can't get wallets: ", logger.Err(err))
-	}
-
-	fmt.Printf("%+v\n", wallets)
 
 	srv := &http.Server{
 		Addr:         config.Address,

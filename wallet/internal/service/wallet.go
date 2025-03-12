@@ -31,7 +31,7 @@ func (w *WalletService) Deposit(ctx context.Context, walletID string, amount flo
 		return 0, err
 	}
 	if wallet.Status == "inactive" {
-		return 0, fmt.Errorf("%s: wallet is inactive", fn)
+		return 0, storage.ErrWalletNotFound
 	}
 
 	wallet.Balance += amount
@@ -63,7 +63,9 @@ func (w *WalletService) Withdraw(ctx context.Context, walletID string, amount fl
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
 	}
-
+	if wallet.Status == "inactive" {
+		return 0, storage.ErrWalletNotFound
+	}
 	if wallet.Balance < amount {
 		return 0, fmt.Errorf("%s: Insufficient funds", fn)
 	}
@@ -97,10 +99,16 @@ func (w *WalletService) Transfer(ctx context.Context, walletID string, amount fl
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", fn, err)
 	}
+	if fromWallet.Status == "inactive" {
+		return 0, 0, storage.ErrWalletNotFound
+	}
 
 	toWallet, err := tx.GetWallet(ctx, transferTo)
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+	if toWallet.Status == "inactive" {
+		return 0, 0, storage.ErrWalletNotFound
 	}
 
 	if fromWallet.Balance < amount {
@@ -141,6 +149,9 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 	wallet, err := tx.GetWallet(ctx, walletID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+	if wallet.Status == "inactive" {
+		return 0, storage.ErrWalletNotFound
 	}
 
 	wallet.Name = name
@@ -185,6 +196,9 @@ func (w *WalletService) GetWallet(ctx context.Context, walletID string) (*storag
 	wallet, err := w.storage.GetWallet(ctx, walletID)
 	if errors.Is(err, storage.ErrWalletNotExist) {
 		return nil, err
+	}
+	if wallet.Status == "inactive" {
+		return nil, storage.ErrWalletNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", fn, err)

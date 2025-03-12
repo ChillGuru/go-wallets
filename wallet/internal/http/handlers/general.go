@@ -74,7 +74,7 @@ func GetWalletHandler(recipient WalletRecipient) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			render.JSON(w, r, Error("Can't get wallet"))
+			render.JSON(w, r, Error(err.Error()))
 			return
 		}
 

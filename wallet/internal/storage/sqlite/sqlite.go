@@ -225,9 +225,7 @@ func (t *SQLiteTx) GetWallet(ctx context.Context, walletID string) (*storage.Wal
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, storage.ErrWalletNotExist
 	}
-	if wallet.Status == "inactive" {
-		return nil, storage.ErrWalletNotFound
-	}
+
 	return &wallet, nil
 }
 
