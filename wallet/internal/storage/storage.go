@@ -31,7 +31,7 @@ type Wallet struct {
 
 // TODO: add more errors
 var (
-	ErrWalletExists   = errors.New("Wallet already exists")
-	ErrWalletNotExist = errors.New("Wallet not exists")
-	ErrWalletNotFound = errors.New("Wallet not found")
+	ErrWalletExists   = errors.New("wallet already exists")
+	ErrWalletNotExist = errors.New("wallet not exists")
+	ErrWalletNotFound = errors.New("wallet not found")
 )

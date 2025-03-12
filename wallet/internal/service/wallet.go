@@ -23,12 +23,15 @@ func (w *WalletService) Deposit(ctx context.Context, walletID string, amount flo
 
 	tx, err := w.storage.BeginTx(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	wallet, err := tx.GetWallet(ctx, walletID)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
+	}
+	if wallet.Status == "inactive" {
+		return 0, fmt.Errorf("%s: wallet is inactive", fn)
 	}
 
 	wallet.Balance += amount
@@ -132,7 +135,7 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 
 	tx, err := w.storage.BeginTx(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	wallet, err := tx.GetWallet(ctx, walletID)
@@ -147,11 +150,11 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 		return 0, err
 	}
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	return id, nil

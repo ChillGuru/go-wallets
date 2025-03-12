@@ -20,7 +20,7 @@ type Response struct {
 type Request struct {
 	Amount     float64 `json:"amount,omitempty"`
 	Name       string  `json:"name,omitempty"`
-	TransferTo float64 `json:"transfer_to,omitempty"`
+	TransferTo string  `json:"transfer_to,omitempty"`
 }
 
 func Error(msg string) Response {
