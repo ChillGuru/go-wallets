@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"wallet/internal/storage"
 	"wallet/internal/utils/random"
 
@@ -20,14 +22,24 @@ const ID_LENGTH = 16
 func New(path string) (*Storage, error) {
 	const fn = "storage.sqlite.New"
 
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		//creating db dir
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, fmt.Errorf("failed to create db directory: %w", err)
+		}
+
+		//creating db
+		file, err := os.Create(path)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%w", fn, err)
+		}
+		file.Close()
+
+	}
+
 	//open bd
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
-		return nil, fmt.Errorf("%s:%w", fn, err)
-	}
-
-	//убрать
-	if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 		return nil, fmt.Errorf("%s:%w", fn, err)
 	}
 
