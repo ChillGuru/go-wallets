@@ -5,32 +5,42 @@ import (
 	"net/http"
 	"os"
 	"wallet/internal/config"
+	"wallet/internal/kafka"
 	logger "wallet/internal/logger/slog"
 	chirouter "wallet/internal/router/chi"
 	"wallet/internal/service"
-	"wallet/internal/storage/sqlite"
-
+	"wallet/internal/storage/postgre"
+	//"wallet/internal/storage/sqlite"
 	"github.com/go-chi/chi"
 )
 
 func Run() error {
-	//TODO
-	//init storage
-	//cleanenv
-
+	//Load config
 	config := config.MustLoad()
 
+	//Init logger
 	log := logger.Init(config.Env)
 	log.Info("Logger inited!")
 
-	storage, err := sqlite.New(config.StoragePath)
+	//Init storage
+	storage, err := postgre.New(config.DBServer.Host, config.DBServer.Port)
 	if err != nil {
 		log.Error("Can't init storage: ", logger.Err(err))
 		os.Exit(1)
 	}
+	defer storage.Close()
 
-	walletService := service.New(storage)
+	//Init kafka producer
+	kafkaProducer, err := kafka.NewProducer(config.Brokers, config.Topic)
+	if err != nil {
+		log.Error("Can't init kafka producer: ", logger.Err(err))
+		os.Exit(1)
+	}
 
+	//Init service
+	walletService := service.New(storage, kafkaProducer)
+
+	//Init router
 	router := chi.NewRouter()
 	chirouter.InitWallet(router, walletService)
 

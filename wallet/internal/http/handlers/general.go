@@ -43,7 +43,7 @@ func CreateWalletHandler(creator WalletCreator) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			render.JSON(w, r, Error("Can't create wallet"))
+			render.JSON(w, r, Error("Can't create wallet: "+err.Error()))
 			return
 		}
 

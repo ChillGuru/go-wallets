@@ -10,8 +10,7 @@ RUN go mod download
 
 #build
 COPY . .
-COPY internal/config/local.yaml ./bin/internal/config/
-COPY local.env ./bin
+COPY internal/config/dev.yaml ./bin/internal/config/
 RUN go build -o ./bin/cmd/app cmd/main.go
 
 FROM alpine AS runner

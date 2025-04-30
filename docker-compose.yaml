@@ -1,13 +1,8 @@
- #stats:
- services:
-  wallet:
-    image: wallet-service:local
-    build: 
-      context: ./wallet
-    ports:
-      - "8081:8081"
-    container_name: wallet
-  
+networks:
+  wallet-net:
+    driver: bridge
+
+services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
@@ -16,67 +11,204 @@
     ports:
       - 22181:2181
     container_name: zookeeper
+    networks:
+      - wallet-net
+    healthcheck:
+      test: nc -z localhost 2181 || exit -1
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   kafka:
     image: confluentinc/cp-kafka:latest
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
+      - 9092:9092
       - 29092:29092
     hostname: kafka
+    networks:
+      - wallet-net
     container_name: kafka
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    healthcheck:
+      test: kafka-topics --bootstrap-server kafka:9092 --list
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   kafka2:
     image: confluentinc/cp-kafka:latest
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
-      - 29093:29092
+      - 9093:9092
+      - 29093:29093
     hostname: kafka2
+    networks:
+      - wallet-net
     container_name: kafka2
     environment:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092,EXTERNAL://localhost:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    healthcheck:
+      test: kafka-topics --bootstrap-server kafka2:9092 --list
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   kafka3:
     image: confluentinc/cp-kafka:latest
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
-      - 29094:29092
+      - 9094:9092
+      - 29094:29094
     hostname: kafka3
+    networks:
+      - wallet-net
     container_name: kafka3
     environment:
       KAFKA_BROKER_ID: 3
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092,EXTERNAL://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    healthcheck:
+      test: kafka-topics --bootstrap-server kafka3:9092 --list
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   kafka-ui:
     image: provectuslabs/kafka-ui
     container_name: kafka-ui
     ports:
       - 8090:8080
+    networks:
+      - wallet-net
     restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092,kafka2:29093,kafka3:29094
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092,kafka2:9092,kafka3:9092
       - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
-    links:
-      - kafka
-      - kafka2
-      - kafka3
-      - zookeeper
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: wallets_admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: wallets_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5430:5432"
+    networks:
+      - wallet-net
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data/pgdata
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      postgres -c max_connections=1000
+               -c shared_buffers=256MB
+               -c effective_cache_size=768MB
+               -c maintenance_work_mem=64MB
+               -c checkpoint_completion_target=0.7
+               -c wal_buffers=16MB
+               -c default_statistics_target=100
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U wallets_admin -d wallets_db" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: george.tolstokory@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8091:80"
+    networks:
+      - wallet-net
+    depends_on:
+      - postgres
+
+  #wallet:
+  #  image: wallet-service:local
+  #  build:
+  #    context: ./wallet
+  #  ports:
+  #    - "8081:8081"
+  #  networks:
+  #    - wallet-net
+  #  container_name: wallet
+  #  depends_on:
+  #    postgres:
+  #      condition: service_healthy
+  #    kafka:
+  #      condition: service_healthy
+  #    kafka2:
+  #      condition: service_healthy
+  #    kafka3:
+  #      condition: service_healthy
+  
+  #stats:
+  #  image: stats-service:local
+  #  build:
+  #    context: ./stats
+  #  ports:
+  #    - "8082:8082"
+  #  networks:
+  #    - wallet-net
+  #  container_name: stats
+  #  depends_on:
+  #    postgres:
+  #      condition: service_healthy
+  #    kafka:
+  #      condition: service_healthy
+  #    kafka2:
+  #      condition: service_healthy
+  #    kafka3:
+  #      condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local
