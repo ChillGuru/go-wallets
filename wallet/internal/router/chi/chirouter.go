@@ -9,16 +9,22 @@ import (
 )
 
 func InitWallet(r *chi.Mux, s *service.WalletService) {
+
 	r.Use(middleware.RequestID) //трейсинг запросов
 	r.Use(middleware.Logger)    //логирование запросов
 	r.Use(middleware.Recoverer) //отлов паник
 
-	r.Post("/wallet", handlers.CreateWalletHandler(s))
-	//r.Get("/wallets{id}", )
-	//r.Get("/wallets", )
-	//r.Put("/wallets{id}", )
-	//r.Delete("wallet/{id}", )
-	//r.Post("/wallets/{id}/deposit", )
-	//r.Post("/wallets/{id}/withdraw", )
-	//r.Post("/wallets/{id}/transfer", )
+	r.Route("/wallet", func(r chi.Router) {
+		r.Post("/", handlers.CreateWalletHandler(s))
+		r.Delete("/{id}", handlers.RemoveWalletHandler(s))
+	})
+
+	r.Route("/wallets", func(r chi.Router) {
+		r.Get("/", handlers.GetWalletsHandler(s))
+		r.Get("/{id}", handlers.GetWalletHandler(s))
+		r.Put("/{id}", handlers.PutWalletsNameHandler(s))
+		r.Post("/{id}/deposit", handlers.WalletDepositHandler(s))
+		r.Post("/{id}/withdraw", handlers.WalletWithdrawHandler(s))
+		r.Post("/{id}/transfer", handlers.WalletTransferHandler(s))
+	})
 }

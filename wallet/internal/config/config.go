@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Env         string `yaml:"env" env-required:"true"`
-	StoragePath string `yaml:"storage_path" env-required:"true"`
-	HTTPServer  `yaml:"http_server"`
+	Env        string `yaml:"env" env-required:"true"`
+	DBServer   `yaml:"db_server" env-required:"true"`
+	HTTPServer `yaml:"http_server"`
+	Kafka      `yaml:"kafka"`
 }
 
 type HTTPServer struct {
@@ -21,20 +21,19 @@ type HTTPServer struct {
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
 
+type Kafka struct {
+	Brokers []string `yaml:"brokers"`
+	Topic   string   `yaml:"topic"`
+}
+
+type DBServer struct {
+	Host string `yaml:"host" env-required:"true"`
+	Port int    `yaml:"port" env-required:"true"`
+}
+
+const configPath = "internal/config/local.yaml"
+
 func MustLoad() *Config {
-
-	//load local.env
-	err := godotenv.Load("local.env")
-	if err != nil {
-		log.Fatal("Can't read local.env: ", err)
-	}
-
-	//get config path
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		log.Fatal("Can't load config (CONFIG_PATH is not set)")
-	}
-
 	//check config file existing
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("Config file is not exist. Path: %s", configPath)
@@ -42,7 +41,7 @@ func MustLoad() *Config {
 
 	//read config
 	var config Config
-	if err = cleanenv.ReadConfig(configPath, &config); err != nil {
+	if err := cleanenv.ReadConfig(configPath, &config); err != nil {
 		log.Fatalf("Can't read config: %s", err)
 	}
 

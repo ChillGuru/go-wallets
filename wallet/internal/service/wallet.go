@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"wallet/internal/kafka"
 	"wallet/internal/storage"
 )
 
 type WalletService struct {
-	storage storage.Storage
+	storage  storage.Storage
+	producer *kafka.Producer
 }
 
-func New(storage storage.Storage) *WalletService {
-	return &WalletService{storage: storage}
+func New(storage storage.Storage, producer *kafka.Producer) *WalletService {
+	return &WalletService{
+		storage:  storage,
+		producer: producer}
 }
 
 func (w *WalletService) Deposit(ctx context.Context, walletID string, amount float64) (int64, error) {
@@ -23,12 +27,15 @@ func (w *WalletService) Deposit(ctx context.Context, walletID string, amount flo
 
 	tx, err := w.storage.BeginTx(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	wallet, err := tx.GetWallet(ctx, walletID)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
+	}
+	if wallet.Status == "inactive" {
+		return 0, storage.ErrWalletNotFound
 	}
 
 	wallet.Balance += amount
@@ -40,6 +47,19 @@ func (w *WalletService) Deposit(ctx context.Context, walletID string, amount flo
 
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	event := kafka.Event{
+		Type: kafka.EventWalletDeposited,
+		Payload: kafka.WalletDepositedPayload{
+			ID:     wallet.ID,
+			Name:   wallet.Name,
+			Amount: amount,
+		},
+	}
+
+	if err := w.producer.SendEvent(event); err != nil {
+		return 0, fmt.Errorf("Producer.SendEvent error for deposit service: %w", err)
 	}
 
 	return id, nil
@@ -60,7 +80,9 @@ func (w *WalletService) Withdraw(ctx context.Context, walletID string, amount fl
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
 	}
-
+	if wallet.Status == "inactive" {
+		return 0, storage.ErrWalletNotFound
+	}
 	if wallet.Balance < amount {
 		return 0, fmt.Errorf("%s: Insufficient funds", fn)
 	}
@@ -74,6 +96,19 @@ func (w *WalletService) Withdraw(ctx context.Context, walletID string, amount fl
 
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	event := kafka.Event{
+		Type: kafka.EventWalletWithdrawn,
+		Payload: kafka.WalletWithdrawnPayload{
+			ID:     wallet.ID,
+			Name:   wallet.Name,
+			Amount: amount,
+		},
+	}
+
+	if err := w.producer.SendEvent(event); err != nil {
+		return 0, fmt.Errorf("Producer.SendEvent error for withdraw service: %w", err)
 	}
 
 	return id, nil
@@ -94,10 +129,16 @@ func (w *WalletService) Transfer(ctx context.Context, walletID string, amount fl
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", fn, err)
 	}
+	if fromWallet.Status == "inactive" {
+		return 0, 0, storage.ErrWalletNotFound
+	}
 
 	toWallet, err := tx.GetWallet(ctx, transferTo)
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", fn, err)
+	}
+	if toWallet.Status == "inactive" {
+		return 0, 0, storage.ErrWalletNotFound
 	}
 
 	if fromWallet.Balance < amount {
@@ -121,6 +162,20 @@ func (w *WalletService) Transfer(ctx context.Context, walletID string, amount fl
 		return 0, 0, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	event := kafka.Event{
+		Type: kafka.EventWalletTransferred,
+		Payload: kafka.WalletTransferredPayload{
+			ID:         walletID,
+			Name:       fromWallet.Name,
+			TransferTo: transferTo,
+			Amount:     amount,
+		},
+	}
+
+	if err := w.producer.SendEvent(event); err != nil {
+		return id, recipientID, fmt.Errorf("Producer.SendEvent error for transfer service: %w", err)
+	}
+
 	return id, recipientID, nil
 }
 
@@ -132,23 +187,29 @@ func (w *WalletService) UpdateName(ctx context.Context, walletID, name string) (
 
 	tx, err := w.storage.BeginTx(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	wallet, err := tx.GetWallet(ctx, walletID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", fn, err)
 	}
+	if wallet.Status == "inactive" {
+		return 0, storage.ErrWalletNotFound
+	}
 
 	wallet.Name = name
 
 	id, err := tx.UpdateWallet(ctx, wallet)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return 0, err
+	}
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("%s: %w", fn, err)
+		return 0, err
 	}
 
 	return id, nil
@@ -168,5 +229,72 @@ func (w *WalletService) CreateWallet(ctx context.Context, name string) (*storage
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	event := kafka.Event{
+		Type: kafka.EventWalletCreated,
+		Payload: kafka.WalletCreatedPayload{
+			ID:   walletID,
+			Name: name,
+		},
+	}
+
+	if err := w.producer.SendEvent(event); err != nil {
+		return nil, fmt.Errorf("Producer.SendEvent error for wallet create service: %w", err)
+	}
+
 	return &storage.Wallet{ID: walletID, Name: name, Status: "active"}, nil
+}
+
+func (w *WalletService) GetWallet(ctx context.Context, walletID string) (*storage.Wallet, error) {
+	const fn = "WalletService.GetWallet"
+
+	var wallet *storage.Wallet
+
+	wallet, err := w.storage.GetWallet(ctx, walletID)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return nil, err
+	}
+	if wallet.Status == "inactive" {
+		return nil, storage.ErrWalletNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return wallet, nil
+}
+
+func (w *WalletService) GetWallets(ctx context.Context) ([]storage.Wallet, error) {
+	const fn = "WalletService.GetWallets"
+
+	wallets, err := w.storage.GetWallets(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return wallets, nil
+}
+
+func (w *WalletService) DeactivateWallet(ctx context.Context, walletID string) (int64, error) {
+	const fn = "WalletService.GetWallets"
+
+	id, err := w.storage.DeactivateWallet(ctx, walletID)
+	if errors.Is(err, storage.ErrWalletNotExist) {
+		return 0, err
+	}
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	event := kafka.Event{
+		Type: kafka.EventWalletDeleted,
+		Payload: kafka.WalletDeletedPayload{
+			ID: walletID,
+		},
+	}
+
+	if err := w.producer.SendEvent(event); err != nil {
+		return id, fmt.Errorf("Producer.SendEvent error for wallet delete service: %w", err)
+	}
+
+	return id, nil
 }

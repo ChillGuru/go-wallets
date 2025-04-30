@@ -8,7 +8,7 @@ import (
 )
 
 type Response struct {
-	ID      string  `json:"id"`
+	ID      string  `json:"id,omitempty"`
 	Name    string  `json:"name,omitempty"`
 	Balance float64 `json:"balance,omitempty"`
 	Status  string  `json:"status,omitempty"`
@@ -20,7 +20,7 @@ type Response struct {
 type Request struct {
 	Amount     float64 `json:"amount,omitempty"`
 	Name       string  `json:"name,omitempty"`
-	TransferTo float64 `json:"transfer_to,omitempty"`
+	TransferTo string  `json:"transfer_to,omitempty"`
 }
 
 func Error(msg string) Response {

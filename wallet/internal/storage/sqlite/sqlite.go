@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"wallet/internal/storage"
 	"wallet/internal/utils/random"
 
@@ -20,14 +22,24 @@ const ID_LENGTH = 16
 func New(path string) (*Storage, error) {
 	const fn = "storage.sqlite.New"
 
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		//creating db dir
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, fmt.Errorf("failed to create db directory: %w", err)
+		}
+
+		//creating db
+		file, err := os.Create(path)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%w", fn, err)
+		}
+		file.Close()
+
+	}
+
 	//open bd
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
-		return nil, fmt.Errorf("%s:%w", fn, err)
-	}
-
-	//убрать
-	if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 		return nil, fmt.Errorf("%s:%w", fn, err)
 	}
 
@@ -145,6 +157,9 @@ func (s *Storage) UpdateWallet(ctx context.Context, updatedWallet *storage.Walle
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, updatedWallet.Name, updatedWallet.Balance, updatedWallet.Status, updatedWallet.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to update wallet: %w", fn, err)
 	}
@@ -168,6 +183,9 @@ func (s *Storage) DeactivateWallet(ctx context.Context, walletID string) (int64,
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, walletID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to deactivate wallet: %w", fn, err)
 	}
@@ -217,7 +235,7 @@ func (t *SQLiteTx) GetWallet(ctx context.Context, walletID string) (*storage.Wal
 
 	err = stmt.QueryRowContext(ctx, walletID).Scan(&wallet.ID, &wallet.Name, &wallet.Balance, &wallet.Status)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("%s failed to get wallet: %w", fn, storage.ErrWalletNotExist)
+		return nil, storage.ErrWalletNotExist
 	}
 
 	return &wallet, nil
@@ -234,6 +252,9 @@ func (t *SQLiteTx) UpdateWallet(ctx context.Context, updatedWallet *storage.Wall
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, updatedWallet.Name, updatedWallet.Balance, updatedWallet.Status, updatedWallet.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, storage.ErrWalletNotExist
+	}
 	if err != nil {
 		return 0, fmt.Errorf("%s failed to update wallet: %w", fn, err)
 	}
